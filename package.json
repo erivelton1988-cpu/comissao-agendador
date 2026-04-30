@@ -1,13 +1,11 @@
 {
   "name": "comissao-agendador",
   "version": "1.0.0",
-  "description": "Controle de Comissão Escalonada",
-  "main": "server.js",
+  "main": "servidor.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node servidor.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "better-sqlite3": "^9.4.3"
+    "express": "^4.18.2"
   }
 }
