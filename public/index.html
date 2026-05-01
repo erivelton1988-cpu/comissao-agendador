@@ -292,9 +292,51 @@ function scheduleSave(id, field, value) {
   const row = rows.find(r => r.id === id);
   if (!row) return;
   row[field] = value;
-  render();
+  atualizarLinha(id);
+  atualizarTotais();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => saveRow(id), 900);
+}
+
+function atualizarLinha(id) {
+  const idx = rows.findIndex(r => r.id === id);
+  if (idx === -1) return;
+  const r = rows[idx];
+  const n = idx + 1;
+  const pct = getPct(n);
+  const phase = getPhase(n);
+  const val = parseFloat(r.valor) || 0;
+  const comm = val * pct / 100;
+  const phaseNames = [\'\',\'Fase 1\',\'Fase 2\',\'Fase 3\'];
+  const bClass = [\'\',\'b1\',\'b2\',\'b3\'][phase];
+  const tr = document.getElementById(\'row-\' + id);
+  if (!tr) return;
+  tr.querySelector(\'.cell-fase\').innerHTML = \'<span class="badge \' + bClass + \'">\' + phaseNames[phase] + \'</span>\';
+  tr.querySelector(\'.cell-pct\').textContent = pct + \'%\';
+  tr.querySelector(\'.cell-comm\').textContent = fmt(comm);
+  tr.querySelector(\'.cell-liq\').textContent = fmt(val - comm);
+}
+
+function atualizarTotais() {
+  let totalRev = 0, totalComm = 0;
+  rows.forEach((r, i) => {
+    const val = parseFloat(r.valor) || 0;
+    totalRev += val;
+    totalComm += val * getPct(i + 1) / 100;
+  });
+  document.getElementById(\'totalCount\').textContent = rows.length;
+  document.getElementById(\'totalRevenue\').textContent = fmt(totalRev);
+  document.getElementById(\'totalCommission\').textContent = fmt(totalComm);
+  document.getElementById(\'totalNet\').textContent = fmt(totalRev - totalComm);
+  const pct = Math.min(100, (rows.length / 30) * 100);
+  document.getElementById(\'progressFill\').style.width = pct + \'%\';
+  document.getElementById(\'progressLabel\').textContent = rows.length + \' de 30\';
+  const tag = document.getElementById(\'phaseTag\');
+  const n = rows.length;
+  if (n === 0) { tag.textContent = \'Aguardando\'; tag.className = \'phase-tag\'; }
+  else if (n <= 15) { tag.textContent = \'📍 Fase 1 — 5%\'; tag.className = \'phase-tag\'; }
+  else if (n <= 25) { tag.textContent = \'🚀 Fase 2 — 7%\'; tag.className = \'phase-tag t2\'; }
+  else { tag.textContent = \'🏆 Fase 3 — 10%\'; tag.className = \'phase-tag t3\'; }
 }
 
 async function saveRow(id) {
@@ -330,35 +372,22 @@ function render() {
     const phaseNames = ['','Fase 1','Fase 2','Fase 3'];
     const bClass = ['','b1','b2','b3'][phase];
     const tr = document.createElement('tr');
+    tr.id = `row-${r.id}`;
     tr.innerHTML = `
       <td style="color:var(--muted);font-size:0.75rem">${n}</td>
       <td><input type="text" value="${r.cliente||''}" placeholder="Nome" oninput="scheduleSave(${r.id},'cliente',this.value)"></td>
       <td><input type="text" value="${r.data||''}" placeholder="dd/mm" oninput="scheduleSave(${r.id},'data',this.value)" style="width:62px"></td>
       <td><input type="number" value="${r.valor||500}" min="0" oninput="scheduleSave(${r.id},'valor',parseFloat(this.value)||0)"></td>
-      <td><span class="badge ${bClass}">${phaseNames[phase]}</span></td>
-      <td style="color:var(--muted)">${pct}%</td>
-      <td class="vg">${fmt(comm)}</td>
-      <td class="vgold">${fmt(val - comm)}</td>
+      <td class="cell-fase"><span class="badge ${bClass}">${phaseNames[phase]}</span></td>
+      <td class="cell-pct" style="color:var(--muted)">${pct}%</td>
+      <td class="cell-comm vg">${fmt(comm)}</td>
+      <td class="cell-liq vgold">${fmt(val - comm)}</td>
       <td><button class="btn-del" onclick="deleteRow(${r.id})">✕</button></td>
     `;
     tbody.appendChild(tr);
   });
 
-  document.getElementById('totalCount').textContent = rows.length;
-  document.getElementById('totalRevenue').textContent = fmt(totalRev);
-  document.getElementById('totalCommission').textContent = fmt(totalComm);
-  document.getElementById('totalNet').textContent = fmt(totalRev - totalComm);
-
-  const pct = Math.min(100, (rows.length / 30) * 100);
-  document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('progressLabel').textContent = `${rows.length} de 30`;
-
-  const tag = document.getElementById('phaseTag');
-  const n = rows.length;
-  if (n === 0) { tag.textContent = 'Aguardando'; tag.className = 'phase-tag'; }
-  else if (n <= 15) { tag.textContent = '📍 Fase 1 — 5%'; tag.className = 'phase-tag'; }
-  else if (n <= 25) { tag.textContent = '🚀 Fase 2 — 7%'; tag.className = 'phase-tag t2'; }
-  else { tag.textContent = '🏆 Fase 3 — 10%'; tag.className = 'phase-tag t3'; }
+  atualizarTotais();
 }
 
 async function carregarHistorico() {
